@@ -1,0 +1,5 @@
+{
+  "name": "StreamLAN",
+  "description": "A local-first media center that runs in your browser. Upload video files, add your own tags, and stream them over your LAN with disk storage.",
+  "requestFramePermissions": []
+}
