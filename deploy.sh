@@ -4,7 +4,7 @@ set -euo pipefail
 
 # === REQUIRED: set these for your Pi ===
 REPO_DIR="/media/sean/061639D91639CB07/Movies"  # path to your project on the Pi
-BRANCH="main"                                   # e.g., main or master
+BRANCH="master"                                 # e.g., main or master
 SERVICE_NAME="streamlan.service"                # systemd user service name
 
 # === OPTIONAL: pin node/npm ===
