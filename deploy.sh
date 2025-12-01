@@ -20,6 +20,12 @@ git fetch origin
 git reset --hard "origin/$BRANCH"
 
 echo "[deploy] installing dependencies"
+echo "[deploy] stopping service: $SERVICE_NAME"
+systemctl --user stop "$SERVICE_NAME" || true
+
+echo "[deploy] removing node_modules to avoid stale native binaries"
+rm -rf node_modules
+
 if command -v npm >/dev/null 2>&1; then
   npm ci
 else
