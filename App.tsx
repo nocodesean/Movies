@@ -6,6 +6,7 @@ import { Player } from './components/Player';
 import { PrintsPanel } from './components/PrintsPanel';
 import { MovieMetadata, PrintMetadata } from './types';
 import { getMovies, deleteMovie, getPrints, uploadPrint, deletePrint } from './services/storage';
+import { Upload } from 'lucide-react';
 
 const App: React.FC = () => {
   const [movies, setMovies] = useState<MovieMetadata[]>([]);
@@ -104,7 +105,6 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#0f0f0f] text-white font-sans selection:bg-red-500/30">
       <Navbar 
-        onUploadClick={() => setIsUploadOpen(true)}
         onHomeClick={() => setActiveMovie(null)}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
@@ -134,6 +134,15 @@ const App: React.FC = () => {
                 <p className="text-gray-400 text-sm">
                   {movies.length} {movies.length === 1 ? 'title' : 'titles'} stored locally
                 </p>
+              </div>
+              <div>
+                <button
+                  onClick={() => setIsUploadOpen(true)}
+                  className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-full font-medium hover:bg-red-700 transition-colors text-sm"
+                >
+                  <Upload className="w-4 h-4" />
+                  Upload Movie
+                </button>
               </div>
             </div>
             <div className="mb-6 flex flex-wrap gap-2 items-center">

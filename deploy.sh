@@ -17,15 +17,24 @@ cd "$REPO_DIR"
 
 echo "[deploy] pulling $BRANCH in $REPO_DIR"
 git fetch origin
-git reset --hard "origin/$BRANCH"
+REMOTE_REF=$(git rev-parse "origin/$BRANCH")
+LOCAL_REF=$(git rev-parse HEAD)
 
-echo "[deploy] installing dependencies"
+if [ "$LOCAL_REF" = "$REMOTE_REF" ]; then
+  echo "[deploy] already up to date; skipping"
+  exit 0
+fi
+
+git reset --hard "$REMOTE_REF"
+
+echo "[deploy] changes detected; updating service"
 echo "[deploy] stopping service: $SERVICE_NAME"
 systemctl --user stop "$SERVICE_NAME" || true
 
 echo "[deploy] removing node_modules to avoid stale native binaries"
 rm -rf node_modules
 
+echo "[deploy] installing dependencies"
 if command -v npm >/dev/null 2>&1; then
   npm ci
 else
