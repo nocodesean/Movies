@@ -1,4 +1,4 @@
-import { MovieMetadata } from '../types';
+import { MovieMetadata, PrintMetadata } from '../types';
 
 const API_BASE = (() => {
   const envBase = (import.meta as any).env?.VITE_API_URL;
@@ -66,4 +66,37 @@ export const deleteMovie = async (id: string): Promise<void> => {
   if (!res.ok) {
     throw new Error(`Failed to delete movie: ${await parseError(res)}`);
   }
+};
+
+// 3D Prints
+export const getPrints = async (): Promise<PrintMetadata[]> => {
+  const res = await fetch(`${API_BASE}/prints`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch prints: ${await parseError(res)}`);
+  }
+  return res.json();
+};
+
+export const uploadPrint = async (file: File): Promise<PrintMetadata> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${API_BASE}/prints/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    throw new Error(`Print upload failed: ${await parseError(res)}`);
+  }
+  return res.json();
+};
+
+export const deletePrint = async (id: string): Promise<void> => {
+  const res = await fetch(`${API_BASE}/prints/${id}`, { method: 'DELETE' });
+  if (!res.ok) {
+    throw new Error(`Failed to delete print: ${await parseError(res)}`);
+  }
+};
+
+export const getPrintDownloadUrl = (id: string): string => {
+  return `${API_BASE}/prints/${id}/download`;
 };

@@ -44,7 +44,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onUploadClick, onHomeClick, sear
           <Upload className="w-4 h-4" />
           <span className="hidden sm:inline">Upload Movie</span>
         </button>
-        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-red-600 to-orange-600 border border-white/20" />
       </div>
     </nav>
   );

@@ -3,15 +3,19 @@ import { Navbar } from './components/Navbar';
 import { MovieGrid } from './components/MovieGrid';
 import { UploadModal } from './components/UploadModal';
 import { Player } from './components/Player';
-import { MovieMetadata } from './types';
-import { getMovies, deleteMovie } from './services/storage';
+import { PrintsPanel } from './components/PrintsPanel';
+import { MovieMetadata, PrintMetadata } from './types';
+import { getMovies, deleteMovie, getPrints, uploadPrint, deletePrint } from './services/storage';
 
 const App: React.FC = () => {
   const [movies, setMovies] = useState<MovieMetadata[]>([]);
+  const [prints, setPrints] = useState<PrintMetadata[]>([]);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeMovie, setActiveMovie] = useState<MovieMetadata | null>(null);
   const [loading, setLoading] = useState(true);
+  const [printLoading, setPrintLoading] = useState(true);
+  const [activeSection, setActiveSection] = useState<'movies' | 'prints'>('movies');
   const [activeGenre, setActiveGenre] = useState<string>('All');
 
   const refreshMovies = async () => {
@@ -28,7 +32,48 @@ const App: React.FC = () => {
 
   useEffect(() => {
     refreshMovies();
+    const loadPrints = async () => {
+      setPrintLoading(true);
+      try {
+        const data = await getPrints();
+        setPrints(data);
+      } catch (e) {
+        console.error("Failed to fetch prints", e);
+      } finally {
+        setPrintLoading(false);
+      }
+    };
+    loadPrints();
   }, []);
+
+  const handlePrintUpload = async (file: File) => {
+    setPrintLoading(true);
+    try {
+      await uploadPrint(file);
+      const updated = await getPrints();
+      setPrints(updated);
+    } catch (e) {
+      console.error('Failed to upload print', e);
+      alert('Failed to upload print file.');
+    } finally {
+      setPrintLoading(false);
+    }
+  };
+
+  const handlePrintDelete = async (id: string) => {
+    if (!confirm('Delete this print file from the server?')) return;
+    setPrintLoading(true);
+    try {
+      await deletePrint(id);
+      const updated = await getPrints();
+      setPrints(updated);
+    } catch (e) {
+      console.error('Failed to delete print', e);
+      alert('Failed to delete print file.');
+    } finally {
+      setPrintLoading(false);
+    }
+  };
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -66,42 +111,68 @@ const App: React.FC = () => {
       />
 
       <main className="container mx-auto px-6 py-8">
-        <div className="mb-8 flex items-end justify-between">
-           <div>
-              <h1 className="text-3xl font-bold mb-2">Library</h1>
-              <p className="text-gray-400 text-sm">
-                {movies.length} {movies.length === 1 ? 'title' : 'titles'} stored locally
-              </p>
-           </div>
-        </div>
-        <div className="mb-6 flex flex-wrap gap-2 items-center">
-          <span className="text-sm text-gray-400">Filter:</span>
+        <div className="mb-6 flex gap-2">
           <button
-            onClick={() => setActiveGenre('All')}
-            className={`px-3 py-1 rounded-full text-sm border ${activeGenre === 'All' ? 'border-red-600 text-white bg-red-600/20' : 'border-white/10 text-gray-300 hover:border-white/30'}`}
+            onClick={() => setActiveSection('movies')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium border ${activeSection === 'movies' ? 'border-red-600 bg-red-600/20 text-white' : 'border-white/10 text-gray-300 hover:border-white/30'}`}
           >
-            All
+            Movies
           </button>
-          {availableGenres.map((genre) => (
-            <button
-              key={genre}
-              onClick={() => setActiveGenre(genre)}
-              className={`px-3 py-1 rounded-full text-sm border capitalize ${activeGenre === genre ? 'border-red-600 text-white bg-red-600/20' : 'border-white/10 text-gray-300 hover:border-white/30'}`}
-            >
-              {genre}
-            </button>
-          ))}
+          <button
+            onClick={() => setActiveSection('prints')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium border ${activeSection === 'prints' ? 'border-red-600 bg-red-600/20 text-white' : 'border-white/10 text-gray-300 hover:border-white/30'}`}
+          >
+            3D Printing
+          </button>
         </div>
 
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
-          </div>
+        {activeSection === 'movies' ? (
+          <>
+            <div className="mb-8 flex items-end justify-between">
+              <div>
+                <h1 className="text-3xl font-bold mb-2">Library</h1>
+                <p className="text-gray-400 text-sm">
+                  {movies.length} {movies.length === 1 ? 'title' : 'titles'} stored locally
+                </p>
+              </div>
+            </div>
+            <div className="mb-6 flex flex-wrap gap-2 items-center">
+              <span className="text-sm text-gray-400">Filter:</span>
+              <button
+                onClick={() => setActiveGenre('All')}
+                className={`px-3 py-1 rounded-full text-sm border ${activeGenre === 'All' ? 'border-red-600 text-white bg-red-600/20' : 'border-white/10 text-gray-300 hover:border-white/30'}`}
+              >
+                All
+              </button>
+              {availableGenres.map((genre) => (
+                <button
+                  key={genre}
+                  onClick={() => setActiveGenre(genre)}
+                  className={`px-3 py-1 rounded-full text-sm border capitalize ${activeGenre === genre ? 'border-red-600 text-white bg-red-600/20' : 'border-white/10 text-gray-300 hover:border-white/30'}`}
+                >
+                  {genre}
+                </button>
+              ))}
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+              </div>
+            ) : (
+              <MovieGrid 
+                movies={filteredMovies} 
+                onMovieSelect={setActiveMovie}
+                onDeleteMovie={handleDelete}
+              />
+            )}
+          </>
         ) : (
-          <MovieGrid 
-            movies={filteredMovies} 
-            onMovieSelect={setActiveMovie}
-            onDeleteMovie={handleDelete}
+          <PrintsPanel 
+            prints={prints}
+            onUpload={handlePrintUpload}
+            onDelete={handlePrintDelete}
+            loading={printLoading}
           />
         )}
       </main>

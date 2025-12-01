@@ -2,6 +2,7 @@
 # Default host: localhost, media folder: ./media, API 3001, UI 3000.
 
 $MediaDir = "$PSScriptRoot\media"
+$PrintDir = "$PSScriptRoot\prints"
 $ApiPort = 3001
 $UiPort = 3000
 
@@ -20,23 +21,27 @@ if (-not (Test-Path "node_modules")) {
 }
 
 New-Item -ItemType Directory -Force -Path $MediaDir | Out-Null
+New-Item -ItemType Directory -Force -Path $PrintDir | Out-Null
 
 $env:MEDIA_DIR = $MediaDir
+$env:PRINT_DIR = $PrintDir
 $env:PORT = $ApiPort
 $env:VITE_API_URL = "http://$TargetHost`:$ApiPort"
 
 Write-Host "Media dir: $MediaDir" -ForegroundColor Green
+Write-Host "Prints dir: $PrintDir" -ForegroundColor Green
 Write-Host "API URL:   $env:VITE_API_URL" -ForegroundColor Green
 Write-Host "UI URL:    http://$TargetHost`:$UiPort" -ForegroundColor Green
 
 Write-Host "Starting media server (port $ApiPort)..." -ForegroundColor Cyan
 $serverJob = Start-Job -ScriptBlock {
-  param($dir, $media, $port)
+  param($dir, $media, $prints, $port)
   Set-Location $dir
   $env:MEDIA_DIR = $media
+  $env:PRINT_DIR = $prints
   $env:PORT = $port
   npm run server
-} -ArgumentList $PSScriptRoot, $MediaDir, $ApiPort
+} -ArgumentList $PSScriptRoot, $MediaDir, $PrintDir, $ApiPort
 
 Write-Host "Starting web app (port $UiPort)..." -ForegroundColor Cyan
 $uiJob = Start-Job -ScriptBlock {

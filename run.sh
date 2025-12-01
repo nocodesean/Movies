@@ -2,12 +2,14 @@
 set -euo pipefail
 
 MEDIA_DIR="${MEDIA_DIR:-$(pwd)/media}"
+PRINT_DIR="${PRINT_DIR:-$(pwd)/prints}"
 API_PORT="${PORT:-3001}"
 UI_PORT="${UI_PORT:-3000}"
 HOST_IP="${HOST_IP:-$(hostname -I 2>/dev/null | awk '{print $1}')}"
 [ -z "$HOST_IP" ] && HOST_IP="localhost"
 
 echo "Media dir: $MEDIA_DIR"
+echo "Prints dir: $PRINT_DIR"
 echo "API port:  $API_PORT"
 echo "UI port:   $UI_PORT"
 echo "Host IP:   $HOST_IP"
@@ -18,6 +20,7 @@ if [ ! -d node_modules ]; then
 fi
 
 export MEDIA_DIR
+export PRINT_DIR
 export PORT="$API_PORT"
 export VITE_API_URL="http://$HOST_IP:$API_PORT"
 

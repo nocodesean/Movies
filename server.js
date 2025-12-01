@@ -13,17 +13,20 @@ const __dirname = path.dirname(__filename);
 const PORT = process.env.PORT || 3001;
 const HOST = process.env.HOST || '0.0.0.0';
 const MEDIA_DIR = process.env.MEDIA_DIR || path.join(__dirname, 'media');
-const DB_FILE = path.join(MEDIA_DIR, 'movies.json');
+const PRINT_DIR = process.env.PRINT_DIR || path.join(__dirname, 'prints');
+const MOVIE_DB_FILE = path.join(MEDIA_DIR, 'movies.json');
+const PRINT_DB_FILE = path.join(PRINT_DIR, 'prints.json');
 
 fs.mkdirSync(MEDIA_DIR, { recursive: true });
+fs.mkdirSync(PRINT_DIR, { recursive: true });
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const loadDb = () => {
-  if (!fs.existsSync(DB_FILE)) return [];
-  const raw = fs.readFileSync(DB_FILE, 'utf8');
+const loadDb = (file) => {
+  if (!fs.existsSync(file)) return [];
+  const raw = fs.readFileSync(file, 'utf8');
   try {
     return JSON.parse(raw);
   } catch (err) {
@@ -32,8 +35,8 @@ const loadDb = () => {
   }
 };
 
-const saveDb = (entries) => {
-  fs.writeFileSync(DB_FILE, JSON.stringify(entries, null, 2));
+const saveDb = (file, entries) => {
+  fs.writeFileSync(file, JSON.stringify(entries, null, 2));
 };
 
 const storage = multer.diskStorage({
@@ -47,6 +50,15 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage });
+const printStorage = multer.diskStorage({
+  destination: (_, __, cb) => cb(null, PRINT_DIR),
+  filename: (_req, file, cb) => {
+    const id = uuidv4();
+    const ext = path.extname(file.originalname) || '';
+    cb(null, `${id}${ext}`);
+  },
+});
+const uploadPrint = multer({ storage: printStorage });
 
 const parseGenres = (genreField) => {
   if (!genreField) return ['Unknown'];
@@ -70,7 +82,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.get('/api/movies', (_req, res) => {
-  const db = loadDb();
+  const db = loadDb(MOVIE_DB_FILE);
   const sorted = db.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   res.json(sorted);
 });
@@ -80,7 +92,7 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
     return res.status(400).json({ error: 'Missing file field "file"' });
   }
 
-  const db = loadDb();
+  const db = loadDb(MOVIE_DB_FILE);
   const incomingId = (req.body?.id || '').trim();
   const id = incomingId || path.parse(req.file.filename).name;
 
@@ -100,13 +112,13 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
   };
 
   db.push(metadata);
-  saveDb(db);
+  saveDb(MOVIE_DB_FILE, db);
 
   res.json(metadata);
 });
 
 app.get('/api/movies/:id/stream', (req, res) => {
-  const db = loadDb();
+  const db = loadDb(MOVIE_DB_FILE);
   const movie = db.find((m) => m.id === req.params.id);
   if (!movie) return res.sendStatus(404);
 
@@ -143,7 +155,7 @@ app.get('/api/movies/:id/stream', (req, res) => {
 });
 
 app.delete('/api/movies/:id', (req, res) => {
-  const db = loadDb();
+  const db = loadDb(MOVIE_DB_FILE);
   const movie = db.find((m) => m.id === req.params.id);
   if (!movie) return res.sendStatus(404);
 
@@ -155,13 +167,74 @@ app.delete('/api/movies/:id', (req, res) => {
   }
 
   const filtered = db.filter((m) => m.id !== req.params.id);
-  saveDb(filtered);
+  saveDb(MOVIE_DB_FILE, filtered);
   res.sendStatus(204);
 });
 
 app.use('/media', express.static(MEDIA_DIR));
 
+// 3D Prints
+app.get('/api/prints', (_req, res) => {
+  const db = loadDb(PRINT_DB_FILE);
+  const sorted = db.sort((a, b) => (b.uploadedAt || 0) - (a.uploadedAt || 0));
+  res.json(sorted);
+});
+
+app.post('/api/prints/upload', uploadPrint.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'Missing file field "file"' });
+  }
+
+  const db = loadDb(PRINT_DB_FILE);
+  const id = path.parse(req.file.filename).name;
+
+  const metadata = {
+    id,
+    originalFilename: req.file.originalname,
+    storagePath: req.file.filename,
+    fileSize: req.file.size,
+    mimeType: req.file.mimetype,
+    uploadedAt: Date.now(),
+  };
+
+  db.push(metadata);
+  saveDb(PRINT_DB_FILE, db);
+
+  res.json(metadata);
+});
+
+app.get('/api/prints/:id/download', (req, res) => {
+  const db = loadDb(PRINT_DB_FILE);
+  const file = db.find((p) => p.id === req.params.id);
+  if (!file) return res.sendStatus(404);
+
+  const filePath = path.join(PRINT_DIR, file.storagePath || `${file.id}`);
+  if (!fs.existsSync(filePath)) return res.sendStatus(404);
+
+  res.download(filePath, file.originalFilename || path.basename(filePath));
+});
+
+app.delete('/api/prints/:id', (req, res) => {
+  const db = loadDb(PRINT_DB_FILE);
+  const file = db.find((p) => p.id === req.params.id);
+  if (!file) return res.sendStatus(404);
+
+  const filePath = path.join(PRINT_DIR, file.storagePath || `${file.id}`);
+  try {
+    fs.rmSync(filePath, { force: true });
+  } catch (err) {
+    console.warn('Failed to remove print file', err);
+  }
+
+  const filtered = db.filter((p) => p.id !== req.params.id);
+  saveDb(PRINT_DB_FILE, filtered);
+  res.sendStatus(204);
+});
+
+app.use('/prints', express.static(PRINT_DIR));
+
 app.listen(PORT, HOST, () => {
   console.log(`Media server running at http://${HOST}:${PORT}`);
   console.log(`Media directory: ${MEDIA_DIR}`);
+  console.log(`Prints directory: ${PRINT_DIR}`);
 });
